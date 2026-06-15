@@ -1,4 +1,4 @@
-package rabbitmq_springboot_demo;
+package com.edgar.rabbitmq;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
