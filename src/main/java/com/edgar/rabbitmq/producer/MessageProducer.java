@@ -1,6 +1,8 @@
 package com.edgar.rabbitmq.producer;
 
 import com.edgar.rabbitmq.config.RabbitMQConfig;
+import com.edgar.rabbitmq.event.OrderCreatedEvent;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
@@ -10,15 +12,14 @@ import org.springframework.stereotype.Component;
 public class MessageProducer {
 
     private final RabbitTemplate rabbitTemplate;
-
-    public void sendMessage(String message) {
-
-        rabbitTemplate.convertAndSend(
-                RabbitMQConfig.EXCHANGE,
-                RabbitMQConfig.ROUTING_KEY,
-                message
-        );
-
-        System.out.println("Message sent: " + message);
+    
+    public void createOrder(OrderCreatedEvent event) {
+    	
+    	rabbitTemplate.convertAndSend(
+    	        RabbitMQConfig.EXCHANGE,
+    	        RabbitMQConfig.ROUTING_KEY,
+    	        event);
+    	
+    	System.out.println("OrderCreatedEvent sent: " + event.toString());
     }
 }
