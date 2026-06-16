@@ -14,12 +14,16 @@ public class MessageProducer {
     private final RabbitTemplate rabbitTemplate;
     
     public void createOrder(OrderCreatedEvent event) {
-    	
-    	rabbitTemplate.convertAndSend(
-    	        RabbitMQConfig.EXCHANGE,
-    	        RabbitMQConfig.ROUTING_KEY,
-    	        event);
-    	
-    	System.out.println("OrderCreatedEvent sent: " + event.toString());
+
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.FANOUT_EXCHANGE,
+                "",
+                event
+        );
+
+        System.out.println(
+                "OrderCreatedEvent sent: "
+                + event.getOrderId()
+        );
     }
 }
