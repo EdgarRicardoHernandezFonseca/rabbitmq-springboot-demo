@@ -14,9 +14,9 @@ public class DeadLetterConsumer {
             LoggerFactory.getLogger(
                     DeadLetterConsumer.class);
 
-    @RabbitListener(
-            queues = RabbitMQConfig.DLQ
-    )
+//    @RabbitListener(
+//            queues = RabbitMQConfig.DLQ
+//    )
     public void consumeFailedMessage(
             OrderCreatedEvent event) {
 
