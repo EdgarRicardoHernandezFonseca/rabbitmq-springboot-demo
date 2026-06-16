@@ -21,13 +21,13 @@ public class EmailConsumer {
     public void receiveOrder(
             OrderCreatedEvent event) {
     	
-    	throw new RuntimeException(
-                "SMTP Server unavailable"
-        );
+//    	throw new RuntimeException(
+//                "SMTP Server unavailable"
+//        );
 
-//    	log.info(
-//    	        "EMAIL SERVICE -> Sending email for order {}",
-//    	        event.getOrderId()
-//    	);
+    	log.info(
+    	        "EMAIL SERVICE -> Sending email for order {}",
+    	        event.getOrderId()
+    	);
     }
 }
