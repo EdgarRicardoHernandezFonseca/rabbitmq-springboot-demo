@@ -24,18 +24,18 @@ public class EmailConsumer {
             OrderCreatedEvent event) {
     	
     	//objetivo es demostrar Dead Letter Queue
-    	throw new AmqpRejectAndDontRequeueException(
-    	        "SMTP Server unavailable"
-    	);
+//    	throw new AmqpRejectAndDontRequeueException(
+//    	        "SMTP Server unavailable"
+//    	);
     	
 //    	throw new RuntimeException(
 //                "SMTP Server unavailable"
 //        );
     	
     	// ok
-//    	log.info(
-//    	        "EMAIL SERVICE -> Sending email for order {}",
-//    	        event.getOrderId()
-//    	);
+    	log.info(
+    	        "EMAIL SERVICE -> Sending email for order {}",
+    	        event.getOrderId()
+    	);
     }
 }
