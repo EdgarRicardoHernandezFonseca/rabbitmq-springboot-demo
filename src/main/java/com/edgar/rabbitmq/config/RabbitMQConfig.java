@@ -4,6 +4,7 @@ import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.FanoutExchange;
 import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -20,10 +21,23 @@ public class RabbitMQConfig {
 
     public static final String FANOUT_EXCHANGE =
             "order.fanout.exchange";
+    
+    public static final String DLQ =
+            "dead.letter.queue";
+
+    public static final String DLX =
+            "dead.letter.exchange";
 
     @Bean
     public Queue emailQueue() {
-        return new Queue(EMAIL_QUEUE);
+
+        return QueueBuilder
+                .durable(EMAIL_QUEUE)
+                .withArgument(
+                        "x-dead-letter-exchange",
+                        DLX
+                )
+                .build();
     }
 
     @Bean
@@ -57,6 +71,12 @@ public class RabbitMQConfig {
                 .bind(auditQueue)
                 .to(fanoutExchange);
     }
+    
+    @Bean
+    public FanoutExchange deadLetterExchange() {
+
+        return new FanoutExchange(DLX);
+    }
 
     @Bean
     public Jackson2JsonMessageConverter messageConverter() {
@@ -74,6 +94,22 @@ public class RabbitMQConfig {
                 messageConverter());
 
         return template;
+    }
+    
+    @Bean
+    public Queue deadLetterQueue() {
+
+        return new Queue(DLQ);
+    }
+    
+    @Bean
+    public Binding deadLetterBinding(
+            Queue deadLetterQueue,
+            FanoutExchange deadLetterExchange) {
+
+        return BindingBuilder
+                .bind(deadLetterQueue)
+                .to(deadLetterExchange);
     }
 
     @Bean

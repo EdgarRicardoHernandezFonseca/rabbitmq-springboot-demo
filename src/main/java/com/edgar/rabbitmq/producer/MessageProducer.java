@@ -7,10 +7,17 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Component
 @RequiredArgsConstructor
 public class MessageProducer {
 
+	private static final Logger log =
+	        LoggerFactory.getLogger(
+	                MessageProducer.class);
+	
     private final RabbitTemplate rabbitTemplate;
     
     public void createOrder(OrderCreatedEvent event) {
@@ -21,9 +28,9 @@ public class MessageProducer {
                 event
         );
 
-        System.out.println(
-                "OrderCreatedEvent sent: "
-                + event.getOrderId()
+        log.info(
+                "OrderCreatedEvent sent: {}",
+                event.getOrderId()
         );
     }
 }
