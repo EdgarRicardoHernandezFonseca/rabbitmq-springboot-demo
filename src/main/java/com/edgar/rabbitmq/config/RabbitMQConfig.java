@@ -32,6 +32,9 @@ public class RabbitMQConfig {
 
     public static final String DLX =
             "dead.letter.exchange";
+    
+    public static final String RETRY_EXCHANGE =
+            "retry.exchange";
 
     @Bean
     public Queue emailQueue() {
@@ -63,7 +66,7 @@ public class RabbitMQConfig {
 
         args.put(
                 "x-dead-letter-exchange",
-                FANOUT_EXCHANGE
+                RETRY_EXCHANGE
         );
 
         return new Queue(
@@ -80,6 +83,11 @@ public class RabbitMQConfig {
         return new FanoutExchange(
                 FANOUT_EXCHANGE
         );
+    }
+    
+    @Bean
+    public FanoutExchange retryExchange() {
+        return new FanoutExchange(RETRY_EXCHANGE);
     }
 
     @Bean
@@ -155,5 +163,15 @@ public class RabbitMQConfig {
         factory.setMessageConverter(converter);
 
         return factory;
+    }
+    
+    @Bean
+    public Binding retryToEmailBinding(
+            Queue emailQueue,
+            FanoutExchange retryExchange) {
+
+        return BindingBuilder
+                .bind(emailQueue)
+                .to(retryExchange);
     }
 }
