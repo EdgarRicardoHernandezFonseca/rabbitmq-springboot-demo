@@ -101,17 +101,7 @@ public class RabbitMQConfig {
                 .bind(auditQueue)
                 .to(fanoutExchange);
     }
-    
-    @Bean
-    public Binding retryBinding(
-            Queue retryQueue,
-            FanoutExchange fanoutExchange) {
-
-        return BindingBuilder
-                .bind(retryQueue)
-                .to(fanoutExchange);
-    }
-    
+     
     @Bean
     public FanoutExchange deadLetterExchange() {
 
