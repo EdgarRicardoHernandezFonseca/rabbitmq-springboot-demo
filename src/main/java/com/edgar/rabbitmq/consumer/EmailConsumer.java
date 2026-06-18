@@ -67,6 +67,39 @@ public class EmailConsumer {
                         .getHeaders()
         );
         
+        if (retryCount == 0) {
+
+            rabbitTemplate.send(
+                    "",
+                    RabbitMQConfig.RETRY_5S_QUEUE,
+                    message
+            );
+
+            return;
+        }
+        
+        if (retryCount == 1) {
+
+            rabbitTemplate.send(
+                    "",
+                    RabbitMQConfig.RETRY_15S_QUEUE,
+                    message
+            );
+
+            return;
+        }
+        
+        if (retryCount == 2) {
+
+            rabbitTemplate.send(
+                    "",
+                    RabbitMQConfig.RETRY_30S_QUEUE,
+                    message
+            );
+
+            return;
+        }
+        
         if (retryCount >= MAX_RETRIES) {
 
             log.error(

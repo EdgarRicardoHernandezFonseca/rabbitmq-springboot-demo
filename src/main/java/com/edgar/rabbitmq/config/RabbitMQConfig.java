@@ -35,6 +35,15 @@ public class RabbitMQConfig {
     
     public static final String RETRY_EXCHANGE =
             "retry.exchange";
+    
+    public static final String RETRY_5S_QUEUE =
+            "retry.5s.queue";
+
+    public static final String RETRY_15S_QUEUE =
+            "retry.15s.queue";
+
+    public static final String RETRY_30S_QUEUE =
+            "retry.30s.queue";
 
     @Bean
     public Queue emailQueue() {
@@ -76,6 +85,36 @@ public class RabbitMQConfig {
                 false,
                 args
         );
+    }
+    
+    @Bean
+    Queue retry5sQueue() {
+
+        return QueueBuilder
+                .durable("retry.5s.queue")
+                .ttl(5000)
+                .deadLetterExchange(RETRY_EXCHANGE)
+                .build();
+    }
+    
+    @Bean
+    Queue retry15sQueue() {
+
+        return QueueBuilder
+                .durable("retry.15s.queue")
+                .ttl(15000)
+                .deadLetterExchange(RETRY_EXCHANGE)
+                .build();
+    }
+    
+    @Bean
+    Queue retry30sQueue() {
+
+        return QueueBuilder
+                .durable("retry.30s.queue")
+                .ttl(30000)
+                .deadLetterExchange(RETRY_EXCHANGE)
+                .build();
     }
 
     @Bean
