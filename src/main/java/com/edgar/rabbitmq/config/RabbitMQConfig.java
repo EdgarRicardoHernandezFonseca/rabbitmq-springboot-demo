@@ -1,8 +1,5 @@
 package com.edgar.rabbitmq.config;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.FanoutExchange;
@@ -22,8 +19,6 @@ public class RabbitMQConfig {
 
     public static final String AUDIT_QUEUE = "audit.queue";
     
-    public static final String RETRY_QUEUE = "retry.queue";
-
     public static final String FANOUT_EXCHANGE =
             "order.fanout.exchange";
     
@@ -60,31 +55,6 @@ public class RabbitMQConfig {
     @Bean
     public Queue auditQueue() {
         return new Queue(AUDIT_QUEUE);
-    }
-    
-    @Bean
-    Queue retryQueue() {
-
-        Map<String, Object> args =
-                new HashMap<>();
-
-        args.put(
-                "x-message-ttl",
-                5000
-        );
-
-        args.put(
-                "x-dead-letter-exchange",
-                RETRY_EXCHANGE
-        );
-
-        return new Queue(
-                RETRY_QUEUE,
-                true,
-                false,
-                false,
-                args
-        );
     }
     
     @Bean

@@ -118,11 +118,5 @@ public class EmailConsumer {
                 MAX_RETRIES,
                 event.getOrderId()
         );
-
-        rabbitTemplate.send(
-                "",
-                RabbitMQConfig.RETRY_QUEUE,
-                message
-        );
     }
 }
