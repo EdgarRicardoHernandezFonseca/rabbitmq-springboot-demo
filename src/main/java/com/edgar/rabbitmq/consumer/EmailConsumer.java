@@ -8,6 +8,9 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
@@ -39,8 +42,6 @@ public class EmailConsumer {
     public void receiveOrder(
             OrderCreatedEvent event,
             Message message) {
-
-    	int retryCount = 0;
     	
     	Long orderId = event.getOrderId();
 
@@ -54,34 +55,8 @@ public class EmailConsumer {
     	    return;
     	}
 
-    	Object xDeath =
-    	        message.getMessageProperties()
-    	                .getHeaders()
-    	                .get("x-death");
-
-    	if (xDeath instanceof java.util.List<?> deaths
-    	        && !deaths.isEmpty()) {
-
-    	    Object first =
-    	            deaths.get(0);
-
-    	    if (first instanceof java.util.Map<?, ?> deathInfo) {
-
-    	        Object count =
-    	                deathInfo.get("count");
-
-    	        if (count instanceof Long) {
-    	            retryCount =
-    	                    ((Long) count).intValue();
-    	        }
-    	    }
-    	}
-    	
-        log.info(
-                "Headers: {}",
-                message.getMessageProperties()
-                        .getHeaders()
-        );
+        int retryCount =
+                getRetryCount(message);
         
         if (retryCount == 0) {
 
@@ -137,6 +112,42 @@ public class EmailConsumer {
         
         processedOrdersService.markProcessed(
                 event.getOrderId()
+        );  
+    }
+    
+    private int getRetryCount(Message message) {
+
+        int retryCount = 0;
+
+        Object xDeath =
+                message.getMessageProperties()
+                        .getHeaders()
+                        .get("x-death");
+
+        if (xDeath instanceof List<?> deaths) {
+
+            for (Object death : deaths) {
+
+                if (death instanceof Map<?, ?> deathInfo) {
+
+                    Object count =
+                            deathInfo.get("count");
+
+                    if (count instanceof Long) {
+
+                        retryCount +=
+                                ((Long) count).intValue();
+                    }
+                }
+            }
+        }
+        
+        log.info(
+                "Headers: {}",
+                message.getMessageProperties()
+                        .getHeaders()
         );
+
+        return retryCount;
     }
 }
