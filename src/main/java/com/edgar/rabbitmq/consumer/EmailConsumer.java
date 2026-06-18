@@ -2,6 +2,7 @@ package com.edgar.rabbitmq.consumer;
 
 import com.edgar.rabbitmq.config.RabbitMQConfig;
 import com.edgar.rabbitmq.event.OrderCreatedEvent;
+import com.edgar.rabbitmq.service.ProcessedOrdersService;
 
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -22,13 +23,16 @@ public class EmailConsumer {
     private static final int MAX_RETRIES = 3;
 
     private final RabbitTemplate rabbitTemplate;
+    
+    private final ProcessedOrdersService processedOrdersService;
 
     public EmailConsumer(
-            RabbitTemplate rabbitTemplate) {
+            RabbitTemplate rabbitTemplate,
+            ProcessedOrdersService processedOrdersService) {
 
         this.rabbitTemplate = rabbitTemplate;
+        this.processedOrdersService = processedOrdersService;
     }
-
     @RabbitListener(
             queues = RabbitMQConfig.EMAIL_QUEUE
     )
@@ -37,6 +41,18 @@ public class EmailConsumer {
             Message message) {
 
     	int retryCount = 0;
+    	
+    	Long orderId = event.getOrderId();
+
+    	if (processedOrdersService.isProcessed(orderId)) {
+
+    	    log.warn(
+    	            "Duplicate message ignored for order {}",
+    	            orderId
+    	    );
+
+    	    return;
+    	}
 
     	Object xDeath =
     	        message.getMessageProperties()
@@ -116,6 +132,10 @@ public class EmailConsumer {
                 "Email failed. Retry {} of {} for order {}",
                 retryCount + 1,
                 MAX_RETRIES,
+                event.getOrderId()
+        );
+        
+        processedOrdersService.markProcessed(
                 event.getOrderId()
         );
     }
