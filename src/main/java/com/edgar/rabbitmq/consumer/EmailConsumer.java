@@ -2,6 +2,7 @@ package com.edgar.rabbitmq.consumer;
 
 import com.edgar.rabbitmq.config.RabbitMQConfig;
 import com.edgar.rabbitmq.event.OrderCreatedEvent;
+import com.edgar.rabbitmq.service.EmailService;
 import com.edgar.rabbitmq.service.ProcessedOrdersService;
 
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -28,13 +29,17 @@ public class EmailConsumer {
     private final RabbitTemplate rabbitTemplate;
     
     private final ProcessedOrdersService processedOrdersService;
+    
+    private final EmailService emailService;
 
     public EmailConsumer(
             RabbitTemplate rabbitTemplate,
-            ProcessedOrdersService processedOrdersService) {
+            ProcessedOrdersService processedOrdersService,
+            EmailService emailService) {
 
         this.rabbitTemplate = rabbitTemplate;
         this.processedOrdersService = processedOrdersService;
+        this.emailService = emailService;
     }
     @RabbitListener(
             queues = RabbitMQConfig.EMAIL_QUEUE
@@ -43,76 +48,91 @@ public class EmailConsumer {
             OrderCreatedEvent event,
             Message message) {
     	
-    	Long orderId = event.getOrderId();
+    	try {
+    		
+    		Long orderId =
+    	            event.getOrderId();
 
-    	if (processedOrdersService.isProcessed(orderId)) {
+    	    if (processedOrdersService
+    	            .isProcessed(orderId)) {
 
-    	    log.warn(
-    	            "Duplicate message ignored for order {}",
-    	            orderId
-    	    );
+    	        log.warn(
+    	                "Duplicate order {} ignored",
+    	                orderId);
 
-    	    return;
-    	}
+    	        return;
+    	    }
 
-        int retryCount =
-                getRetryCount(message);
-        
-        if (retryCount == 0) {
+    	    emailService.sendEmail(event);
 
-            rabbitTemplate.send(
-                    "",
-                    RabbitMQConfig.RETRY_5S_QUEUE,
-                    message
-            );
+    	    processedOrdersService
+    	            .markProcessed(orderId);
 
-            return;
-        }
-        
-        if (retryCount == 1) {
+    	    log.info(
+    	            "Order {} processed successfully",
+    	            orderId);
 
-            rabbitTemplate.send(
-                    "",
-                    RabbitMQConfig.RETRY_15S_QUEUE,
-                    message
-            );
+    	} catch (Exception e) {
 
-            return;
-        }
-        
-        if (retryCount == 2) {
+    		int retryCount =
+                    getRetryCount(message);
+            
+            if (retryCount == 0) {
 
-            rabbitTemplate.send(
-                    "",
-                    RabbitMQConfig.RETRY_30S_QUEUE,
-                    message
-            );
+                rabbitTemplate.send(
+                        "",
+                        RabbitMQConfig.RETRY_5S_QUEUE,
+                        message
+                );
 
-            return;
-        }
-        
-        if (retryCount >= MAX_RETRIES) {
+                return;
+            }
+            
+            if (retryCount == 1) {
 
-            log.error(
-                    "Max retries reached for order {}",
+                rabbitTemplate.send(
+                        "",
+                        RabbitMQConfig.RETRY_15S_QUEUE,
+                        message
+                );
+
+                return;
+            }
+            
+            if (retryCount == 2) {
+
+                rabbitTemplate.send(
+                        "",
+                        RabbitMQConfig.RETRY_30S_QUEUE,
+                        message
+                );
+
+                return;
+            }
+            
+            if (retryCount >= MAX_RETRIES) {
+
+                log.error(
+                        "Max retries reached for order {}",
+                        event.getOrderId()
+                );
+
+                throw new AmqpRejectAndDontRequeueException(
+                        "Max retries exceeded"
+                );
+            }
+
+            log.warn(
+                    "Email failed. Retry {} of {} for order {}",
+                    retryCount + 1,
+                    MAX_RETRIES,
                     event.getOrderId()
             );
-
-            throw new AmqpRejectAndDontRequeueException(
-                    "Max retries exceeded"
-            );
-        }
-
-        log.warn(
-                "Email failed. Retry {} of {} for order {}",
-                retryCount + 1,
-                MAX_RETRIES,
-                event.getOrderId()
-        );
-        
-        processedOrdersService.markProcessed(
-                event.getOrderId()
-        );  
+            
+            processedOrdersService.markProcessed(
+                    event.getOrderId()
+            );  
+    	}
     }
     
     private int getRetryCount(Message message) {
