@@ -12,28 +12,27 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class OrderService {
-	
-	private final ObjectMapper objectMapper;
-	private final OutboxEventRepository repository;
-	
-	public void createOrder(
-	        OrderCreatedEvent event)
-	        throws Exception {
 
-	    OutboxEvent outbox =
-	            new OutboxEvent();
+    private final ObjectMapper objectMapper;
+    private final OutboxEventRepository repository;
 
-	    outbox.setEventType(
-	            "ORDER_CREATED");
+    public void createOrder(
+            OrderCreatedEvent event)
+            throws Exception {
 
-	    outbox.setPayload(
-	            objectMapper.writeValueAsString(
-	                    event));
+        OutboxEvent outbox =
+                new OutboxEvent();
 
-	    outbox.setStatus(
-	            "PENDING");
+        outbox.setEventType(
+                "ORDER_CREATED");
 
-	    repository.save(outbox);
-	}
+        outbox.setPayload(
+                objectMapper.writeValueAsString(
+                        event));
 
+        outbox.setStatus(
+                "PENDING");
+
+        repository.save(outbox);
+    }
 }

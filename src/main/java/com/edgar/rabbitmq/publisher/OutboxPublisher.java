@@ -8,7 +8,9 @@ import org.springframework.stereotype.Component;
 
 import com.edgar.rabbitmq.config.RabbitMQConfig;
 import com.edgar.rabbitmq.entity.OutboxEvent;
+import com.edgar.rabbitmq.event.OrderCreatedEvent;
 import com.edgar.rabbitmq.repository.OutboxEventRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 
@@ -18,22 +20,31 @@ public class OutboxPublisher {
 
     private final OutboxEventRepository repository;
     private final RabbitTemplate rabbitTemplate;
+    private final ObjectMapper objectMapper;
 
     @Scheduled(fixedDelay = 5000)
-    public void publishEvents() {
+    public void publishPendingEvents()
+            throws Exception {
 
         List<OutboxEvent> events =
-                repository.findByStatus("PENDING");
+                repository.findByStatus(
+                        "PENDING");
 
         for (OutboxEvent event : events) {
+
+            OrderCreatedEvent orderEvent =
+                    objectMapper.readValue(
+                            event.getPayload(),
+                            OrderCreatedEvent.class);
 
             rabbitTemplate.convertAndSend(
                     RabbitMQConfig.FANOUT_EXCHANGE,
                     "",
-                    event.getPayload()
+                    orderEvent
             );
 
-            event.setStatus("SENT");
+            event.setStatus(
+                    "SENT");
 
             repository.save(event);
         }
