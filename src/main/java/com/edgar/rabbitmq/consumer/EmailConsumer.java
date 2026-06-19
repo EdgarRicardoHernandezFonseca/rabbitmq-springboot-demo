@@ -4,6 +4,7 @@ import com.edgar.rabbitmq.config.RabbitMQConfig;
 import com.edgar.rabbitmq.event.OrderCreatedEvent;
 import com.edgar.rabbitmq.service.EmailService;
 import com.edgar.rabbitmq.service.ProcessedOrdersService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -31,6 +32,8 @@ public class EmailConsumer {
     private final ProcessedOrdersService processedOrdersService;
     
     private final EmailService emailService;
+    
+    private final ObjectMapper objectMapper;
 
     public EmailConsumer(
             RabbitTemplate rabbitTemplate,
@@ -56,7 +59,7 @@ public class EmailConsumer {
     		                OrderCreatedEvent.class);
     		
     		Long orderId =
-    	            event.getOrderId();
+    				orderEvent.getOrderId();
 
     	    if (processedOrdersService
     	            .isProcessed(orderId)) {
@@ -67,8 +70,14 @@ public class EmailConsumer {
 
     	        return;
     	    }
+    	    
+    	    rabbitTemplate.convertAndSend(
+    	            RabbitMQConfig.FANOUT_EXCHANGE,
+    	            "",
+    	            orderEvent
+    	    );
 
-    	    emailService.sendEmail(event);
+    	    emailService.sendEmail(orderEvent);
 
     	    processedOrdersService
     	            .markProcessed(orderId);
