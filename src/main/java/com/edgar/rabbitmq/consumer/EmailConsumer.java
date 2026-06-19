@@ -128,10 +128,6 @@ public class EmailConsumer {
                     MAX_RETRIES,
                     event.getOrderId()
             );
-            
-            processedOrdersService.markProcessed(
-                    event.getOrderId()
-            );  
     	}
     }
     
