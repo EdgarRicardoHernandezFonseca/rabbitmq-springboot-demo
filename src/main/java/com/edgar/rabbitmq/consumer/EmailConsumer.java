@@ -50,6 +50,11 @@ public class EmailConsumer {
     	
     	try {
     		
+    		OrderCreatedEvent orderEvent =
+    		        objectMapper.readValue(
+    		                event.getPayload(),
+    		                OrderCreatedEvent.class);
+    		
     		Long orderId =
     	            event.getOrderId();
 

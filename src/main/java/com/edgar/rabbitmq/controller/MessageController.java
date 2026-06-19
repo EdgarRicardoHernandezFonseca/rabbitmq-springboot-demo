@@ -1,8 +1,8 @@
 package com.edgar.rabbitmq.controller;
 
-import com.edgar.rabbitmq.dto.CreateOrderRequest;
-import com.edgar.rabbitmq.dto.MessageRequest;
-import com.edgar.rabbitmq.service.MessageService;
+import com.edgar.rabbitmq.event.OrderCreatedEvent;
+import com.edgar.rabbitmq.service.OrderService;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,13 +12,13 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class MessageController {
 
-    private final MessageService messageService;
-
+    private final OrderService orderService;
+    
     @PostMapping
     public ResponseEntity<String> createOrder(
-            @RequestBody CreateOrderRequest request) {
+            @RequestBody OrderCreatedEvent event) throws Exception {
 
-        messageService.createOrder(request);
+        orderService.createOrder(event);
 
         return ResponseEntity.ok(
                 "Order event sent successfully"
