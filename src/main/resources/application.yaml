@@ -24,6 +24,8 @@ spring:
     username: guest
     password: guest
 
+    publisher-confirm-type: correlated
+
     listener:
       simple:
         default-requeue-rejected: false

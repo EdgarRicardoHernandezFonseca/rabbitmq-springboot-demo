@@ -2,12 +2,12 @@ package com.edgar.rabbitmq.publisher;
 
 import java.util.List;
 
+import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import com.edgar.rabbitmq.config.RabbitMQConfig;
-import com.edgar.rabbitmq.consumer.AuditConsumer;
 import com.edgar.rabbitmq.entity.OutboxEvent;
 import com.edgar.rabbitmq.event.OrderCreatedEvent;
 import com.edgar.rabbitmq.repository.OutboxEventRepository;
@@ -54,16 +54,39 @@ public class OutboxPublisher {
                             event.getPayload(),
                             OrderCreatedEvent.class);
 
+            CorrelationData correlationData =
+                    new CorrelationData(
+                            String.valueOf(
+                                    event.getId()));
+
             rabbitTemplate.convertAndSend(
                     RabbitMQConfig.FANOUT_EXCHANGE,
                     "",
-                    orderEvent
-            );
+                    orderEvent,
+                    correlationData);
 
-            event.setStatus(
-                    "SENT");
+            boolean confirmed =
+                    correlationData
+                            .getFuture()
+                            .get()
+                            .isAck();
 
-            repository.save(event);
+            if (confirmed) {
+
+                event.setStatus("SENT");
+
+                repository.save(event);
+
+                log.info(
+                        "Outbox event {} published",
+                        event.getId());
+
+            } else {
+
+                log.error(
+                        "RabbitMQ rejected message {}",
+                        event.getId());
+            }
         }
     }
 }
