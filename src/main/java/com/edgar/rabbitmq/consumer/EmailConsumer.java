@@ -59,7 +59,12 @@ public class EmailConsumer {
 
         try {
 
-            if (isDuplicate(event.getOrderId())) {
+        	
+        	// Simular fallo en EmailService:
+        	throw new RuntimeException("Email Error");
+        	
+/*
+        	if (isDuplicate(event.getOrderId())) {
 
                 log.warn(
                         "Duplicate order {} ignored",
@@ -81,11 +86,11 @@ public class EmailConsumer {
             channel.basicAck(
                     deliveryTag,
                     false);
-
+*/
         } catch (Exception e) {
-
-            procesarRetry(event, message);
-
+        	
+            procesarRetry(deliveryTag, event, message, channel);
+/*
             try {
 				channel.basicNack(
 				        deliveryTag,
@@ -93,7 +98,8 @@ public class EmailConsumer {
 				        false);
 			} catch (IOException e1) {
 				e1.printStackTrace();
-			}
+			} 
+*/
         }
     }
     
@@ -165,7 +171,7 @@ public class EmailConsumer {
 		}
     }
     
-    public void procesarRetry(OrderCreatedEvent event, Message message) {
+    public void procesarRetry(long deliveryTag, OrderCreatedEvent event, Message message, Channel channel) {
     	
     	int retryCount =
                 getRetryCount(message);
@@ -210,9 +216,12 @@ public class EmailConsumer {
                     event.getOrderId()
             );
 
-            throw new AmqpRejectAndDontRequeueException(
-                    "Max retries exceeded"
-            );
+            try {
+				channel.basicNack(deliveryTag, false, false);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+            return;
         }
 
         log.warn(
