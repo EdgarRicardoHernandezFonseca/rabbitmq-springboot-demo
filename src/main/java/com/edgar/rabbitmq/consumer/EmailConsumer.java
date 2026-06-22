@@ -44,6 +44,7 @@ public class EmailConsumer {
         this.processedOrdersService = processedOrdersService;
         this.emailService = emailService;
     }
+    
     @RabbitListener(
             queues = RabbitMQConfig.EMAIL_QUEUE
     )
@@ -51,32 +52,49 @@ public class EmailConsumer {
             OrderCreatedEvent event,
             Message message,
             Channel channel) {
-    	
-    	long deliveryTag =
-		        message.getMessageProperties()
-		               .getDeliveryTag();
-    	
-    	try {
-    		
-    		Long orderId =
-    	            event.getOrderId();
 
-    		if (!validarDuplicado(orderId, deliveryTag, channel)) {
-    			
-    			enviarEmail(event);
+        long deliveryTag =
+                message.getMessageProperties()
+                       .getDeliveryTag();
 
-    			marcarProcesado(orderId);
-    			
-    			// basicAck(deliveryTag, channel);
-    	    
-    		}
+        try {
 
-    	} catch (Exception e) {
+            if (isDuplicate(event.getOrderId())) {
 
-    		procesarRetry(event, message);
-            
-    		basicAck(deliveryTag, channel);
-    	}
+                log.warn(
+                        "Duplicate order {} ignored",
+                        event.getOrderId());
+
+                channel.basicAck(
+                        deliveryTag,
+                        false);
+
+                return;
+            }
+
+            emailService.sendEmail(event);
+
+            processedOrdersService
+                    .markProcessed(
+                            event.getOrderId());
+
+            channel.basicAck(
+                    deliveryTag,
+                    false);
+
+        } catch (Exception e) {
+
+            procesarRetry(event, message);
+
+            try {
+				channel.basicNack(
+				        deliveryTag,
+				        false,
+				        false);
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+        }
     }
     
     private int getRetryCount(Message message) {
@@ -115,29 +133,10 @@ public class EmailConsumer {
         return retryCount;
     }
     
-    public boolean validarDuplicado(Long orderId, long deliveryTag, Channel channel) {
-    	
-    	 if (processedOrdersService
- 	            .isProcessed(orderId)) {
+    private boolean isDuplicate(Long orderId) {
 
- 	        log.warn(
- 	                "Duplicate order {} ignored",
- 	                orderId);
- 	        
- 	        try {
- 	        	log.info(
- 	        		    "DeliveryTag={} AckMode=MANUAL",
- 	        		    deliveryTag
- 	        		);
-				channel.basicAck(deliveryTag, false);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-
- 	        return true;
- 	    }
-    	 
-    	return false;
+        return processedOrdersService
+                .isProcessed(orderId);
     }
     
     public void enviarEmail(OrderCreatedEvent event) {
