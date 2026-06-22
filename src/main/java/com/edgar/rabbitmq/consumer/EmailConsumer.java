@@ -9,6 +9,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -16,6 +17,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.core.Message;
+
+import com.rabbitmq.client.Channel;
 
 @Component
 public class EmailConsumer {
@@ -46,88 +49,31 @@ public class EmailConsumer {
     )
     public void receiveOrder(
             OrderCreatedEvent event,
-            Message message) {
+            Message message,
+            Channel channel) {
+    	
+    	long deliveryTag =
+		        message.getMessageProperties()
+		               .getDeliveryTag();
     	
     	try {
     		
     		Long orderId =
     	            event.getOrderId();
 
-    	    if (processedOrdersService
-    	            .isProcessed(orderId)) {
+    		validarDuplicado(orderId);
 
-    	        log.warn(
-    	                "Duplicate order {} ignored",
-    	                orderId);
+    	    enviarEmail(event);
 
-    	        return;
-    	    }
-
-    	    emailService.sendEmail(event);
-
-    	    processedOrdersService
-    	            .markProcessed(orderId);
-
-    	    log.info(
-    	            "Order {} processed successfully",
-    	            orderId);
+    	    marcarProcesado(orderId);
+    	    
+    	    basicAck(deliveryTag, channel);
 
     	} catch (Exception e) {
 
-    		int retryCount =
-                    getRetryCount(message);
+    		procesarRetry(event, message);
             
-            if (retryCount == 0) {
-
-                rabbitTemplate.send(
-                        "",
-                        RabbitMQConfig.RETRY_5S_QUEUE,
-                        message
-                );
-
-                return;
-            }
-            
-            if (retryCount == 1) {
-
-                rabbitTemplate.send(
-                        "",
-                        RabbitMQConfig.RETRY_15S_QUEUE,
-                        message
-                );
-
-                return;
-            }
-            
-            if (retryCount == 2) {
-
-                rabbitTemplate.send(
-                        "",
-                        RabbitMQConfig.RETRY_30S_QUEUE,
-                        message
-                );
-
-                return;
-            }
-            
-            if (retryCount >= MAX_RETRIES) {
-
-                log.error(
-                        "Max retries reached for order {}",
-                        event.getOrderId()
-                );
-
-                throw new AmqpRejectAndDontRequeueException(
-                        "Max retries exceeded"
-                );
-            }
-
-            log.warn(
-                    "Email failed. Retry {} of {} for order {}",
-                    retryCount + 1,
-                    MAX_RETRIES,
-                    event.getOrderId()
-            );
+            basicNack(deliveryTag, channel);
     	}
     }
     
@@ -165,5 +111,116 @@ public class EmailConsumer {
         );
 
         return retryCount;
+    }
+    
+    public void validarDuplicado(Long orderId) {
+    	
+    	 if (processedOrdersService
+ 	            .isProcessed(orderId)) {
+
+ 	        log.warn(
+ 	                "Duplicate order {} ignored",
+ 	                orderId);
+
+ 	        return;
+ 	    }
+    	
+    }
+    
+    public void enviarEmail(OrderCreatedEvent event) {
+    	
+    	emailService.sendEmail(event);
+    }
+    
+    public void marcarProcesado(Long orderId) {
+    	
+    	processedOrdersService
+        .markProcessed(orderId);
+
+		log.info(
+		        "Order {} processed successfully",
+		        orderId);
+    }
+    
+    public void basicAck(long deliveryTag, Channel channel) {
+    	
+    	try {
+			channel.basicAck(
+			        deliveryTag,
+			        false);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+    }
+    
+    public void procesarRetry(OrderCreatedEvent event, Message message) {
+    	
+    	int retryCount =
+                getRetryCount(message);
+        
+        if (retryCount == 0) {
+
+            rabbitTemplate.send(
+                    "",
+                    RabbitMQConfig.RETRY_5S_QUEUE,
+                    message
+            );
+
+            return;
+        }
+        
+        if (retryCount == 1) {
+
+            rabbitTemplate.send(
+                    "",
+                    RabbitMQConfig.RETRY_15S_QUEUE,
+                    message
+            );
+
+            return;
+        }
+        
+        if (retryCount == 2) {
+
+            rabbitTemplate.send(
+                    "",
+                    RabbitMQConfig.RETRY_30S_QUEUE,
+                    message
+            );
+
+            return;
+        }
+        
+        if (retryCount >= MAX_RETRIES) {
+
+            log.error(
+                    "Max retries reached for order {}",
+                    event.getOrderId()
+            );
+
+            throw new AmqpRejectAndDontRequeueException(
+                    "Max retries exceeded"
+            );
+        }
+
+        log.warn(
+                "Email failed. Retry {} of {} for order {}",
+                retryCount + 1,
+                MAX_RETRIES,
+                event.getOrderId()
+        );
+    }
+    
+    public void basicNack(long deliveryTag, Channel channel) {
+    	
+    	try {
+			channel.basicNack(
+			        deliveryTag,
+			        false,
+			        false
+			);
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
     }
 }

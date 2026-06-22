@@ -28,6 +28,7 @@ spring:
 
     listener:
       simple:
+        acknowledge-mode: manual
         default-requeue-rejected: false
 
 server:
