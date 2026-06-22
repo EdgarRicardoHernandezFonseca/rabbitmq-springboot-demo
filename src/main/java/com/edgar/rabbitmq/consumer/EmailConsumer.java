@@ -61,19 +61,21 @@ public class EmailConsumer {
     		Long orderId =
     	            event.getOrderId();
 
-    		validarDuplicado(orderId);
+    		if (!validarDuplicado(orderId, deliveryTag, channel)) {
+    			
+    			enviarEmail(event);
 
-    	    enviarEmail(event);
-
-    	    marcarProcesado(orderId);
+    			marcarProcesado(orderId);
+    			
+    			// basicAck(deliveryTag, channel);
     	    
-    	    basicAck(deliveryTag, channel);
+    		}
 
     	} catch (Exception e) {
 
     		procesarRetry(event, message);
             
-            basicNack(deliveryTag, channel);
+    		basicAck(deliveryTag, channel);
     	}
     }
     
@@ -113,7 +115,7 @@ public class EmailConsumer {
         return retryCount;
     }
     
-    public void validarDuplicado(Long orderId) {
+    public boolean validarDuplicado(Long orderId, long deliveryTag, Channel channel) {
     	
     	 if (processedOrdersService
  	            .isProcessed(orderId)) {
@@ -121,10 +123,21 @@ public class EmailConsumer {
  	        log.warn(
  	                "Duplicate order {} ignored",
  	                orderId);
+ 	        
+ 	        try {
+ 	        	log.info(
+ 	        		    "DeliveryTag={} AckMode=MANUAL",
+ 	        		    deliveryTag
+ 	        		);
+				channel.basicAck(deliveryTag, false);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 
- 	        return;
+ 	        return true;
  	    }
-    	
+    	 
+    	return false;
     }
     
     public void enviarEmail(OrderCreatedEvent event) {
@@ -209,18 +222,5 @@ public class EmailConsumer {
                 MAX_RETRIES,
                 event.getOrderId()
         );
-    }
-    
-    public void basicNack(long deliveryTag, Channel channel) {
-    	
-    	try {
-			channel.basicNack(
-			        deliveryTag,
-			        false,
-			        false
-			);
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
     }
 }
