@@ -15,7 +15,6 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.core.Message;
 
 import com.rabbitmq.client.Channel;
@@ -59,11 +58,6 @@ public class EmailConsumer {
 
         try {
 
-        	
-        	// Simular fallo en EmailService:
-        	throw new RuntimeException("Email Error");
-        	
-/*
         	if (isDuplicate(event.getOrderId())) {
 
                 log.warn(
@@ -86,11 +80,11 @@ public class EmailConsumer {
             channel.basicAck(
                     deliveryTag,
                     false);
-*/
+
         } catch (Exception e) {
         	
             procesarRetry(deliveryTag, event, message, channel);
-/*
+
             try {
 				channel.basicNack(
 				        deliveryTag,
@@ -99,7 +93,6 @@ public class EmailConsumer {
 			} catch (IOException e1) {
 				e1.printStackTrace();
 			} 
-*/
         }
     }
     
