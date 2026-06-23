@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import com.edgar.rabbitmq.config.RabbitMQConfig;
 import com.edgar.rabbitmq.entity.OutboxEvent;
 import com.edgar.rabbitmq.event.OrderCreatedEvent;
+import com.edgar.rabbitmq.metrics.OutboxMetrics;
 import com.edgar.rabbitmq.repository.OutboxEventRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -25,6 +26,7 @@ public class OutboxPublisher {
     private final OutboxEventRepository repository;
     private final RabbitTemplate rabbitTemplate;
     private final ObjectMapper objectMapper;
+    private final OutboxMetrics outboxMetrics;
     
     private static final Logger log =
 	        LoggerFactory.getLogger(
@@ -64,6 +66,8 @@ public class OutboxPublisher {
                     "",
                     orderEvent,
                     correlationData);
+            
+            outboxMetrics.incrementPublished();
 
             boolean confirmed =
                     correlationData

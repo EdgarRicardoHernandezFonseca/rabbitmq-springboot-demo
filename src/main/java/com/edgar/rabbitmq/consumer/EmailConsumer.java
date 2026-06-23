@@ -2,6 +2,7 @@ package com.edgar.rabbitmq.consumer;
 
 import com.edgar.rabbitmq.config.RabbitMQConfig;
 import com.edgar.rabbitmq.event.OrderCreatedEvent;
+import com.edgar.rabbitmq.metrics.EmailMetrics;
 import com.edgar.rabbitmq.metrics.OrderMetrics;
 import com.edgar.rabbitmq.service.EmailService;
 import com.edgar.rabbitmq.service.ProcessedOrdersService;
@@ -20,9 +21,6 @@ import org.springframework.amqp.core.Message;
 
 import com.rabbitmq.client.Channel;
 
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Timer;
-
 @Component
 public class EmailConsumer {
 
@@ -40,16 +38,20 @@ public class EmailConsumer {
     
     private final OrderMetrics orderMetrics;
     
+    private final EmailMetrics metrics;
+    
     public EmailConsumer(
             RabbitTemplate rabbitTemplate,
             ProcessedOrdersService processedOrdersService,
             EmailService emailService,
-            OrderMetrics orderMetrics) {
+            OrderMetrics orderMetrics,
+            EmailMetrics metrics) {
 
         this.rabbitTemplate = rabbitTemplate;
         this.processedOrdersService = processedOrdersService;
         this.emailService = emailService;
         this.orderMetrics = orderMetrics;
+        this.metrics = metrics;
     }
     
     @RabbitListener(
@@ -83,7 +85,9 @@ public class EmailConsumer {
                 return;
             }
 
-            emailService.sendEmail(event);
+        	metrics.getProcessingTimer().record(() -> {
+        	    emailService.sendEmail(event);
+        	});
 
             processedOrdersService
                     .markProcessed(
