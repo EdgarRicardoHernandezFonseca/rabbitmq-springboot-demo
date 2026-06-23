@@ -2,6 +2,7 @@ package com.edgar.rabbitmq.consumer;
 
 import com.edgar.rabbitmq.config.RabbitMQConfig;
 import com.edgar.rabbitmq.event.OrderCreatedEvent;
+import com.edgar.rabbitmq.metrics.OrderMetrics;
 import com.edgar.rabbitmq.service.EmailService;
 import com.edgar.rabbitmq.service.ProcessedOrdersService;
 
@@ -19,6 +20,9 @@ import org.springframework.amqp.core.Message;
 
 import com.rabbitmq.client.Channel;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
+
 @Component
 public class EmailConsumer {
 
@@ -33,15 +37,19 @@ public class EmailConsumer {
     private final ProcessedOrdersService processedOrdersService;
     
     private final EmailService emailService;
-
+    
+    private final OrderMetrics orderMetrics;
+    
     public EmailConsumer(
             RabbitTemplate rabbitTemplate,
             ProcessedOrdersService processedOrdersService,
-            EmailService emailService) {
+            EmailService emailService,
+            OrderMetrics orderMetrics) {
 
         this.rabbitTemplate = rabbitTemplate;
         this.processedOrdersService = processedOrdersService;
         this.emailService = emailService;
+        this.orderMetrics = orderMetrics;
     }
     
     @RabbitListener(
@@ -51,7 +59,11 @@ public class EmailConsumer {
             OrderCreatedEvent event,
             Message message,
             Channel channel) {
-
+    	
+        log.info(
+             "Processing order {}",
+             event.getOrderId());
+        
         long deliveryTag =
                 message.getMessageProperties()
                        .getDeliveryTag();
@@ -76,6 +88,8 @@ public class EmailConsumer {
             processedOrdersService
                     .markProcessed(
                             event.getOrderId());
+            
+            orderMetrics.incrementProcessed();
 
             channel.basicAck(
                     deliveryTag,
@@ -84,6 +98,8 @@ public class EmailConsumer {
         } catch (Exception e) {
         	
             procesarRetry(deliveryTag, event, message, channel);
+            
+            orderMetrics.incrementFailed();
 
             try {
 				channel.basicNack(
@@ -208,6 +224,8 @@ public class EmailConsumer {
                     "Max retries reached for order {}",
                     event.getOrderId()
             );
+            
+            orderMetrics.incrementFailed();
 
             try {
 				channel.basicNack(deliveryTag, false, false);
