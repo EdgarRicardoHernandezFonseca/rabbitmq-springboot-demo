@@ -50,12 +50,15 @@ public class RabbitMQConfig {
                         "x-dead-letter-exchange",
                         DLX
                 )
+                .quorum()
                 .build();
     }
 
     @Bean
     public Queue auditQueue() {
-        return new Queue(AUDIT_QUEUE);
+    	return QueueBuilder.durable("audit.queue")
+                .quorum()
+                .build();
     }
     
     @Bean
@@ -65,6 +68,7 @@ public class RabbitMQConfig {
                 .durable("retry.5s.queue")
                 .ttl(5000)
                 .deadLetterExchange(RETRY_EXCHANGE)
+                .quorum()
                 .build();
     }
     
@@ -75,6 +79,7 @@ public class RabbitMQConfig {
                 .durable("retry.15s.queue")
                 .ttl(15000)
                 .deadLetterExchange(RETRY_EXCHANGE)
+                .quorum()
                 .build();
     }
     
@@ -85,6 +90,7 @@ public class RabbitMQConfig {
                 .durable("retry.30s.queue")
                 .ttl(30000)
                 .deadLetterExchange(RETRY_EXCHANGE)
+                .quorum()
                 .build();
     }
 
@@ -146,8 +152,9 @@ public class RabbitMQConfig {
     
     @Bean
     public Queue deadLetterQueue() {
-
-        return new Queue(DLQ);
+    	return QueueBuilder.durable(DLQ)
+                .quorum()
+                .build();
     }
     
     @Bean
