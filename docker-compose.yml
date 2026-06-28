@@ -1,23 +1,36 @@
 services:
 
   rabbitmq:
+
+    restart: unless-stopped
+
     image: rabbitmq:3.13-management
+
     container_name: rabbitmq
+
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
 
     ports:
       - "5672:5672"
       - "15672:15672"
 
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-
     healthcheck:
+
       test: ["CMD","rabbitmq-diagnostics","check_running"]
-      interval: 10s
-      timeout: 5s
+
+      interval: 20s
+
+      timeout: 10s
+
       retries: 5
 
+    networks:
+      - rabbit-network
+
   springboot:
+
+    restart: unless-stopped
 
     build: .
 
@@ -28,14 +41,38 @@ services:
       rabbitmq:
         condition: service_healthy
 
+      prometheus:
+
+        condition: service_started
+
     environment:
 
       SPRING_PROFILES_ACTIVE: docker
 
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
+
     ports:
       - "8080:8080"
 
+    healthcheck:
+
+      test: ["CMD","wget","--spider","http://localhost:8080/actuator/health"]
+
+      interval: 30s
+
+      timeout: 10s
+
+      retries: 5
+
+    networks:
+      - rabbit-network
+
   prometheus:
+
+    restart: unless-stopped
 
     image: prom/prometheus
 
@@ -43,24 +80,40 @@ services:
 
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
 
     ports:
       - "9090:9090"
 
+    networks:
+      - rabbit-network
+
   grafana:
+
+    restart: unless-stopped
 
     image: grafana/grafana
 
     container_name: grafana
 
     volumes:
-      - grafana_data:/var/lib/grafana
+      - grafana-storage:/var/lib/grafana
 
     ports:
       - "3000:3000"
 
+    networks:
+      - rabbit-network
+
 volumes:
 
-  rabbitmq_data:
+  rabbitmq-data:
 
-  grafana_data:
+  grafana-storage:
+
+  prometheus-data:
+
+
+networks:
+
+   rabbit-network:
