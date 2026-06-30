@@ -2,11 +2,11 @@ services:
 
   rabbitmq:
 
-    restart: unless-stopped
-
     image: rabbitmq:3.13-management
 
     container_name: rabbitmq
+
+    restart: unless-stopped
 
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
@@ -30,11 +30,11 @@ services:
 
   springboot:
 
-    restart: unless-stopped
-
     build: .
 
     container_name: springboot
+
+    restart: unless-stopped
 
     depends_on:
 
@@ -72,11 +72,11 @@ services:
 
   prometheus:
 
-    restart: unless-stopped
-
     image: prom/prometheus
 
     container_name: prometheus
+
+    restart: unless-stopped
 
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
@@ -90,17 +90,21 @@ services:
 
   grafana:
 
-    restart: unless-stopped
-
     image: grafana/grafana
 
     container_name: grafana
 
-    volumes:
-      - grafana-storage:/var/lib/grafana
+    restart: unless-stopped
 
     ports:
       - "3001:3000"
+
+    volumes:
+      - grafana-storage:/var/lib/grafana
+
+      - ./grafana/provisioning:/etc/grafana/provisioning
+
+      - ./grafana/provisioning/dashboards:/var/lib/grafana/dashboards
 
     networks:
       - rabbit-network
